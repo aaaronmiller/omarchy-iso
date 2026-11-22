@@ -1,0 +1,18 @@
+[Unit]
+Description=Surface Laptop 4 CPU power limits (PL1 28W sustained / PL2 45W burst)
+After=multi-user.target
+
+[Service]
+Type=oneshot
+# The Fedora version of this unit has FAILED on every boot since 2026-05-29:
+#   - it wrote *_max_power_uw, which is the read-only hardware ceiling (r--r--r--)
+#   - it had PL1/PL2 swapped (45W sustained, 28W burst)
+# Real knobs are *_power_limit_uw. constraint_0 = long_term (PL1), constraint_1 = short_term (PL2).
+# Firmware defaults measured 2026-10-17: PL1 30W, PL2 60W, ceiling 28W reported.
+# Check after boot:  grep . /sys/class/powercap/intel-rapl:0/constraint_*_{name,power_limit_uw}
+ExecStart=/bin/sh -c 'echo 28000000 > /sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw'
+ExecStart=/bin/sh -c 'echo 45000000 > /sys/class/powercap/intel-rapl:0/constraint_1_power_limit_uw'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

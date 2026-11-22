@@ -1,0 +1,16 @@
+cargo
+cargo-clippy
+cargo-fmt
+cargo-miri
+clippy-driver
+letta-client
+pi
+rls
+rust-analyzer
+rustc
+rustdoc
+rustfmt
+rust-gdb
+rust-gdbgui
+rust-lldb
+rustup

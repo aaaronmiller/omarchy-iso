@@ -1,0 +1,11 @@
+[Unit]
+Description=Restart UPower after Surface battery read timeouts (linux-surface #2303)
+After=upower.service
+
+[Service]
+ExecStart=/usr/local/bin/surface-battery-watchdog
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

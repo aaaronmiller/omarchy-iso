@@ -37,6 +37,7 @@ def build_phases(ctx: InstallContext):
         stage_provisioning_state,
         finalize_limine_boot,
         run_chroot_finalizer,
+        stage_migration_kit,
         configure_dns_resolver,
         configure_login,
         configure_ssh_access,
@@ -59,6 +60,7 @@ def build_phases(ctx: InstallContext):
         ("Finalizing Limine boot",     finalize_limine_boot),
         ("Finalizing user",            run_chroot_finalizer),
         ("Configuring login",          configure_login),
+        ("Staging migration kit",      stage_migration_kit),
         ("Configuring SSH access",     configure_ssh_access),
         # DEV ONLY (N1x bring-up): listed only on images that carry the script.
         *([("DEV ONLY: N1x debug SSH", configure_dev_ssh)] if DEV_SSH_SCRIPT.exists() else []),

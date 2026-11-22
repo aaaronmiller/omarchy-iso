@@ -1,0 +1,4 @@
+# Surface touchpad: rebind hid-multitouch after resume (javon27/omarchy-surface-touch pattern).
+# Fixes pad going silent or dropping to single-touch after sleep. Matches Microsoft
+# vendor ID only (product ID differs per model: 09C0 Pro 7+, 09B5 Go).
+ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="045e", TAG+="systemd", ENV{SYSTEMD_WANTS}+="rebind-surface-touchpad.service"

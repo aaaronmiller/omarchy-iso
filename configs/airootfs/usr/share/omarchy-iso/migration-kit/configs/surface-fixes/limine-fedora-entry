@@ -1,0 +1,19 @@
+#!/bin/bash
+# Install (Omarchy): /usr/local/bin/limine-fedora-entry  + limine-fedora-entry.{path,service}
+# omacom/omarchy #7867 (confirmed on 4.0.4): `omarchy-refresh-limine` rebuilds /boot/limine.conf and
+# drops every non-Omarchy entry, so Fedora (the permanent backup OS) silently vanishes from the menu.
+# The .path unit runs this whenever limine.conf changes; it re-adds Fedora only if it's missing.
+#
+# Fedora's ESP is nvme0n1p1, PARTUUID a4f34f51-f959-47a5-9524-4b9c97a88232 (checked 2026-10-17).
+# Secure Boot is off for Omarchy, so shim just hands over to Fedora's GRUB (surface kernels only).
+# VERIFY on first boot: `protocol: efi` + `path: guid(...)` against `man limine` (Limine 12 syntax).
+conf=/boot/limine.conf
+[[ -f $conf ]] || exit 0
+grep -q '^/Fedora' "$conf" && exit 0
+cat >>"$conf" <<'EOF'
+
+/Fedora (backup OS)
+    protocol: efi
+    path: guid(a4f34f51-f959-47a5-9524-4b9c97a88232):/EFI/fedora/shimx64.efi
+EOF
+logger -t limine-fedora-entry "re-added Fedora entry to $conf"

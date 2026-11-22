@@ -1,0 +1,8 @@
+[Unit]
+Description=Re-add Fedora to Limine whenever limine.conf is rewritten (omarchy #7867)
+
+[Path]
+PathChanged=/boot/limine.conf
+
+[Install]
+WantedBy=multi-user.target

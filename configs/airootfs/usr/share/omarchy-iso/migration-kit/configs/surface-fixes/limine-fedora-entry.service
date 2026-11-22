@@ -1,0 +1,6 @@
+[Unit]
+Description=Ensure Fedora entry exists in /boot/limine.conf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/limine-fedora-entry

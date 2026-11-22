@@ -1,0 +1,24 @@
+#!/bin/bash
+# shell-switch noctalia|omarchy   — swap desktop shells live, no logout.
+# Install to ~/.local/bin/shell-switch
+set -euo pipefail
+
+target=${1:-}
+[[ $target == noctalia || $target == omarchy ]] || { echo "usage: shell-switch noctalia|omarchy" >&2; exit 2; }
+
+if [[ $target == noctalia ]] && ! command -v noctalia >/dev/null; then
+  echo "noctalia isn't installed: sudo pacman -S noctalia" >&2
+  exit 1
+fi
+
+echo "$target" >"$HOME/.config/shell-mode"
+
+# Stop whichever shell is running. The Omarchy shell is a quickshell instance on $OMARCHY_PATH/shell.
+pkill -x noctalia 2>/dev/null || true
+pkill -f "quickshell .*-p ${OMARCHY_PATH:-/usr/share/omarchy}/shell" 2>/dev/null || true
+sleep 0.5
+
+hyprctl reload >/dev/null # re-reads shell-mode.lua, swaps keybindings
+setsid -f "$HOME/.local/share/shell-switch/bin/omarchy-launch-shell" >/dev/null 2>&1
+
+notify-send "Shell" "Switched to $target" 2>/dev/null || echo "Switched to $target"

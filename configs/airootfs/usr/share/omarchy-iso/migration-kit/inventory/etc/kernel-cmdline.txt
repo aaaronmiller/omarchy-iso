@@ -1,0 +1,1 @@
+BOOT_IMAGE=(hd0,gpt2)/vmlinuz-6.19.8-3.surface.fc43.x86_64 root=UUID=2af201e7-fda0-4891-b479-c745b9cc4ed1 ro rootflags=subvol=root rhgb quiet mem_sleep_default=deep

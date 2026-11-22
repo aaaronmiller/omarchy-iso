@@ -1,0 +1,6 @@
+# Extras (opt-in): install with --include-optional or scripts/50-extras.sh. yazi atuin gitui helix are defaults now.
+television
+jujutsu
+ast-grep
+bottom
+# python-evdev is installed by scripts/60-two-finger-click.sh itself.

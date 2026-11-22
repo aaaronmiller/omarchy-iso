@@ -456,6 +456,9 @@ detect_kernel() {
     echo "$iso_kernel"
   elif lspci -nn 2>/dev/null | grep -q "106b:180[12]"; then
     echo "linux-t2"
+  elif [[ $(cat /sys/class/dmi/id/sys_vendor 2>/dev/null) == "Microsoft Corporation" && $(cat /sys/class/dmi/id/product_name 2>/dev/null) == Surface* ]]; then
+    # Surface needs linux-surface: stock kernels have no surface_hid/surface_aggregator.
+    echo "linux-surface"
   else
     echo "linux-omarchy"
   fi

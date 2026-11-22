@@ -1,0 +1,7 @@
+# (empty: Noctalia v5 ships as 'noctalia' in Arch [extra]; installed by 30-desktop.sh, not from the AUR)
+# maki (Rust agent, herdr-native, rtk-aware) opt-in: maki-bin 0.6.3 (~1 behind upstream 0.6.4) or cargo install --git https://github.com/tontinton/maki (AUR source maki 0.4.5 is orphaned/stale, skip it)
+maki-bin
+# ai-memory (cross-agent memory, 20+ harnesses incl OMP/Pi, zero-LLM): AUR ai-memory-bin 3.1.1-1 author-maintained. Hook-writer — sequence with rtk, verify merged hooks.
+ai-memory-bin
+# ai-usagebar (multi-provider plan usage in bar, native Quickshell plugin): AUR ai-usagebar-bin 1.40.1-1 author-maintained + `omarchy plugin add https://github.com/akitaonrails/ai-usagebar.git --enable`
+ai-usagebar-bin

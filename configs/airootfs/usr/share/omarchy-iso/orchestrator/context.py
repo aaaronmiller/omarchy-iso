@@ -217,7 +217,18 @@ def iso_kernel(path: Path = ISO_KERNEL_FILE) -> str:
         return ""
 
 
-def _default_kernel(pci_devices: Path = Path("/sys/bus/pci/devices"), platform_kernel: str | None = None) -> str:
+def _is_surface(dmi: Path = Path("/sys/class/dmi/id")) -> bool:
+    # Microsoft Surface laptops need linux-surface: the stock kernels have no
+    # surface_hid / surface_aggregator, so the keyboard and touchpad stay dead.
+    try:
+        vendor = (dmi / "sys_vendor").read_text().strip()
+        product = (dmi / "product_name").read_text().strip()
+    except OSError:
+        return False
+    return vendor == "Microsoft Corporation" and product.startswith("Surface")
+
+
+def _default_kernel(pci_devices: Path = Path("/sys/bus/pci/devices"), platform_kernel: str | None = None, dmi: Path = Path("/sys/class/dmi/id")) -> str:
     # An aarch64 image boots and installs one kernel and nothing else boots;
     # the configurator's detect_kernel makes the same choice.
     platform_kernel = iso_kernel() if platform_kernel is None else platform_kernel
@@ -231,6 +242,8 @@ def _default_kernel(pci_devices: Path = Path("/sys/bus/pci/devices"), platform_k
             continue
         if vendor == "0x106b" and device_id in {"0x1801", "0x1802"}:
             return "linux-t2"
+    if _is_surface(dmi):
+        return "linux-surface"
     return "linux-omarchy"
 
 

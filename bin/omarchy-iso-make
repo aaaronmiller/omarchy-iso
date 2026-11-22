@@ -112,7 +112,7 @@ fi
 # build-iso.sh refuses a runtime without the platform support.
 CONTAINER_IMAGE=ghcr.io/archlinux/archlinux:latest
 CONTAINER_PLATFORM_ARGS=()
-OMARCHY_KERNEL=linux-t2
+OMARCHY_KERNEL=linux-surface
 if [[ $OMARCHY_ARCH == aarch64 ]]; then
   OMARCHY_KERNEL=linux-omarchy
   if [[ ${OMARCHY_MIRROR:-} != edge ]]; then

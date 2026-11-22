@@ -1,0 +1,10 @@
+#!/bin/bash
+# Shim installed to ~/.local/share/shell-switch/bin/omarchy-launch-shell
+# Picks the desktop shell at session start based on ~/.config/shell-mode.
+mode=$(tr -d '[:space:]' <"$HOME/.config/shell-mode" 2>/dev/null)
+
+if [[ $mode == noctalia ]] && command -v noctalia >/dev/null; then
+  exec systemd-cat -t noctalia -- noctalia
+fi
+
+exec "${OMARCHY_PATH:-/usr/share/omarchy}/bin/omarchy-launch-shell" "$@"

@@ -1,0 +1,20 @@
+product: Surface Laptop 4
+kernel:  6.19.8-3.surface.fc43.x86_64
+camera:  video0 = Surface Camera Front: Surface C
+camera:  video1 = Surface Camera Front: Surface C
+camera:  video2 = Surface Camera Front: Surface I
+camera:  video3 = Surface Camera Front: Surface I
+by-path: total 0
+by-path: lrwxrwxrwx. 1 root root 12 Sep 14 17:00 pci-0000:00:14.0-usb-0:6:1.0-video-index0 -> ../../video0
+by-path: lrwxrwxrwx. 1 root root 12 Sep 14 17:00 pci-0000:00:14.0-usb-0:6:1.0-video-index1 -> ../../video1
+by-path: lrwxrwxrwx. 1 root root 12 Sep 14 17:00 pci-0000:00:14.0-usb-0:6:1.2-video-index0 -> ../../video2
+by-path: lrwxrwxrwx. 1 root root 12 Sep 14 17:00 pci-0000:00:14.0-usb-0:6:1.2-video-index1 -> ../../video3
+by-path: lrwxrwxrwx. 1 root root 12 Sep 14 17:00 pci-0000:00:14.0-usbv2-0:6:1.0-video-index0 -> ../../video0
+by-path: lrwxrwxrwx. 1 root root 12 Sep 14 17:00 pci-0000:00:14.0-usbv2-0:6:1.0-video-index1 -> ../../video1
+by-path: lrwxrwxrwx. 1 root root 12 Sep 14 17:00 pci-0000:00:14.0-usbv2-0:6:1.2-video-index0 -> ../../video2
+by-path: lrwxrwxrwx. 1 root root 12 Sep 14 17:00 pci-0000:00:14.0-usbv2-0:6:1.2-video-index1 -> ../../video3
+input:   event10 = Microsoft Surface 045E:09AF Mouse
+input:   event11 = Microsoft Surface 045E:09AF Touchpad
+input:   event12 = Microsoft Surface 045E:09AF UNKNOWN
+input:   event13 = Microsoft Surface 045E:09AF UNKNOWN
+input:   event9 = Microsoft Surface 045E:09AE

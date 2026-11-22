@@ -1,0 +1,6 @@
+# Extras (opt-in), held back on purpose: rtk-bin and codewhale write hooks into agent configs, abtop and walker-bin are unreviewed. Review each before installing.
+# herdr is bundled by Omarchy itself (package herdr in the ISO mirror), so herdr-bin was dropped.
+rtk-bin
+abtop
+walker-bin
+codewhale

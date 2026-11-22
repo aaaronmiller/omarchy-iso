@@ -1,0 +1,25 @@
+[Unit]
+Description=Hermes Agent Gateway - Messaging Platform Integration
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/home/cheta-surface/.hermes/hermes-agent/venv/bin/python -m hermes_cli.main gateway run
+WorkingDirectory=/home/cheta-surface/.hermes
+Environment="PATH=/home/cheta-surface/.hermes/hermes-agent/venv/bin:/home/cheta-surface/.hermes/hermes-agent/node_modules/.bin:/home/cheta-surface/.brv-cli/bin:/home/cheta-surface/.local/bin:/home/cheta-surface/.cargo/bin:/home/cheta-surface/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="VIRTUAL_ENV=/home/cheta-surface/.hermes/hermes-agent/venv"
+Environment="HERMES_HOME=/home/cheta-surface/.hermes"
+Restart=always
+RestartSec=5
+RestartForceExitStatus=75
+KillMode=mixed
+KillSignal=SIGTERM
+ExecReload=/bin/kill -USR1 $MAINPID
+TimeoutStopSec=210
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

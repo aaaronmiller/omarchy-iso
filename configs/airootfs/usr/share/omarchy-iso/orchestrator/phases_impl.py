@@ -1376,6 +1376,32 @@ def _stage_provisioning_luks_unlock(ctx: InstallContext, provisioning_dir) -> No
     files_dropin.write_text("FILES+=(/etc/omarchy/provisioning.key)\n")
 
 
+SURFACE_INITRAMFS_CONF = "zz-surface-laptop4.conf"
+SURFACE_INITRAMFS_MODULES = (
+    "pinctrl_tigerlake",  # Tiger Lake pinctrl (Surface Laptop 4, i7-1185G7)
+    "surface_aggregator",
+    "surface_aggregator_registry",
+    "surface_aggregator_hub",
+    "surface_hid_core",
+    "surface_hid",
+    "intel_lpss_pci",
+    "8250_dw",
+)
+
+
+def _drop_surface_initramfs_modules(ctx: InstallContext) -> None:
+    """Put the Surface keyboard/touchpad drivers in the target initramfs, so the
+    built-in keyboard can type the disk password at the LUKS prompt.
+
+    A drop-in that sorts last and APPENDS (MODULES+=). Omarchy's own Surface file
+    uses MODULES= and wipes earlier entries (omacom/omarchy #7111).
+    """
+    conf_dir = ctx.target / "etc" / "mkinitcpio.conf.d"
+    conf_dir.mkdir(parents=True, exist_ok=True)
+    modules = " ".join(SURFACE_INITRAMFS_MODULES)
+    (conf_dir / SURFACE_INITRAMFS_CONF).write_text(f"MODULES+=({modules})\n")
+
+
 INITRAMFS_MODULES_CONF = "zz-omarchy-kernel-modules.conf"
 
 
@@ -1463,6 +1489,8 @@ def finalize_limine_boot(ctx: InstallContext) -> None:
     if not limine_conf.exists():
         raise RuntimeError(f"{limine_conf} missing")
 
+    if any((ctx.target / "usr/lib/modules").glob("*surface*")):
+        _drop_surface_initramfs_modules(ctx)
     _drop_initramfs_modules_the_kernel_lacks(ctx)
     subprocess.run(["arch-chroot", str(ctx.target), "limine-update"], check=True)
 
@@ -2288,3 +2316,60 @@ def cleanup_protected_state(ctx: InstallContext) -> None:
             check=False,
             capture_output=True,
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# stage_migration_kit (Surface only): the migration kit is baked into the live
+# image at /usr/share/omarchy-iso/migration-kit. Stage it system-wide on the
+# target and add a one-shot XDG autostart entry, so the first login opens the
+# automated post-install (scripts/00-postinstall.sh --auto) without any manual
+# steps. Works for deferred-provisioning installs too (no user exists yet).
+# A failure here must never fail the install.
+# ─────────────────────────────────────────────────────────────────────────────
+
+MIGRATION_KIT_SRC = Path("/usr/share/omarchy-iso/migration-kit")
+
+MIGRATION_AUTOSTART = """\
+[Desktop Entry]
+Type=Application
+Name=Omarchy migration: first login
+Comment=Runs the Surface post-install once, then disarms itself
+Exec=/usr/local/bin/omarchy-migration-firstlogin
+Terminal=false
+X-GNOME-Autostart-enabled=true
+"""
+
+
+def stage_migration_kit(ctx: InstallContext) -> None:
+    from .context import _is_surface
+
+    if not _is_surface() or not MIGRATION_KIT_SRC.is_dir():
+        return
+    info("› staging the Surface migration kit for first login")
+    try:
+        dest = ctx.target / "usr" / "share" / "omarchy-migration-kit"
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(MIGRATION_KIT_SRC, dest, symlinks=True)
+        for script in list(dest.rglob("*.sh")) + list(dest.rglob("*.py")):
+            if not script.is_symlink():
+                script.chmod(0o755)
+
+        launcher_src = dest / "scripts" / "firstlogin.sh"
+        launcher = ctx.target / "usr" / "local" / "bin" / "omarchy-migration-firstlogin"
+        launcher.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(launcher_src, launcher)
+        launcher.chmod(0o755)
+
+        autostart = ctx.target / "etc" / "xdg" / "autostart" / "omarchy-migration-firstlogin.desktop"
+        autostart.parent.mkdir(parents=True, exist_ok=True)
+        autostart.write_text(MIGRATION_AUTOSTART)
+
+        # Omarchy migration 1789325478 installs linux-omarchy and demotes linux-surface in BOOT_ORDER unless this
+        # machine-wide marker exists (migration source in omarchy 4.0.4, rebuild_marker). New users already get a
+        # per-user skel marker; this covers the machine-wide gate too.
+        marker = ctx.target / "var" / "lib" / "omarchy" / "migrations" / "1789325478"
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.touch()
+    except OSError as exc:
+        info(f"› migration kit staging skipped: {exc}")

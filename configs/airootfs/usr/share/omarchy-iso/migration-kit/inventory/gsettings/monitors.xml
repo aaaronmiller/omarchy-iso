@@ -1,0 +1,24 @@
+<monitors version="2">
+  <configuration>
+    <layoutmode>physical</layoutmode>
+    <logicalmonitor>
+      <x>0</x>
+      <y>0</y>
+      <scale>1</scale>
+      <primary>yes</primary>
+      <monitor>
+        <monitorspec>
+          <connector>eDP-1</connector>
+          <vendor>SHP</vendor>
+          <product>LQ135P1JX51</product>
+          <serial>0x001023a0</serial>
+        </monitorspec>
+        <mode>
+          <width>2256</width>
+          <height>1504</height>
+          <rate>59.999</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+  </configuration>
+</monitors>

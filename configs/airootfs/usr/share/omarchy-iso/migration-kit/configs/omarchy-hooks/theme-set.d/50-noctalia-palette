@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Omarchy runs theme-set hooks with bash, so this entry execs the Python implementation.
+# Install the Python file to ~/.config/omarchy/hooks/ (see the install step in the README).
+exec python3 "$HOME/.config/omarchy/hooks/noctalia-palette.py" "$@"

@@ -1,0 +1,12 @@
+[Unit]
+Description=Rotate wallpaper every 30 minutes
+Requires=wallpaper-changer.service
+
+[Timer]
+# Run 60 seconds after login, then every 30 minutes
+OnStartupSec=60s
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

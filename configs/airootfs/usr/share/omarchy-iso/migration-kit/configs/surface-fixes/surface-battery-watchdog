@@ -1,0 +1,11 @@
+#!/bin/bash
+# Install: /usr/local/bin/surface-battery-watchdog  (+ surface-battery-watchdog.service)
+# linux-surface #2303 (SL4 Intel, kernel 6.19.8-surface): the Surface Aggregator sometimes times out
+# reading the battery (-110). The kernel recovers, but UPower stays stuck at energy-full 0 Wh, which
+# shows as a false 0% battery and can trigger UPower's critical action (hibernate / power off).
+# Restarting upower after each timeout clears it. Works the same on Fedora and Arch/Omarchy.
+journalctl -k -f -n0 -o cat --grep='(BAT1|ADP1): driver failed to report' | while read -r line; do
+  logger -t surface-battery-watchdog "SAM battery timeout: $line — restarting upower"
+  sleep 2
+  systemctl restart upower.service
+done

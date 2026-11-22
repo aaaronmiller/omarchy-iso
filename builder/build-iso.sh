@@ -5,7 +5,7 @@ set -e
 OMARCHY_ISO_REF="${OMARCHY_ISO_REF:-quattro}"
 OMARCHY_MIRROR="${OMARCHY_MIRROR:-stable}"
 OMARCHY_ARCH="${OMARCHY_ARCH:-x86_64}"
-OMARCHY_KERNEL="${OMARCHY_KERNEL:-linux-t2}"
+OMARCHY_KERNEL="${OMARCHY_KERNEL:-linux-surface}"
 # profiledef.sh reads both in the mkarchiso environment.
 export OMARCHY_ARCH OMARCHY_KERNEL
 
@@ -137,6 +137,10 @@ fi
 # during the build without keyserver lookups).
 pacman-key --add /builder/omarchy.gpg
 pacman-key --lsign-key 40DFB630FF42BCFFB047046CF0134EE680CAC571
+# linux-surface signing key (fingerprint 87DEFA4AB94A99A4C8C3112556C464BAAC421453),
+# so pacman verifies the Surface kernel repo during the build.
+pacman-key --add /builder/linux-surface.asc
+pacman-key --lsign-key 87DEFA4AB94A99A4C8C3112556C464BAAC421453
 
 # omarchy-keyring is needed inside the offline mirror too.
 pacman --config "$online_pacman_conf" --noconfirm -Sy omarchy-keyring
@@ -182,6 +186,9 @@ fi
 
 # Architecture overlay on the shared profile: live kernel, initramfs hooks,
 # GRUB entries. x86_64 keeps its exact previous behaviour.
+# releng ships a stock linux.preset that names /boot/vmlinuz-linux, which this image never installs.
+# Remove it on every architecture (rm -f is a no-op when it is already gone).
+rm -f "$build_cache_dir/airootfs/etc/mkinitcpio.d/linux.preset"
 if [[ $OMARCHY_ARCH == aarch64 ]]; then
   # releng's live package list is x86-flavoured; drop what arm64 cannot use.
   arm_live_excludes=(amd-ucode broadcom-wl edk2-shell hyperv intel-ucode linux memtest86+ memtest86+-efi open-vm-tools refind reflector syslinux virtualbox-guest-utils-nox)
@@ -191,7 +198,7 @@ if [[ $OMARCHY_ARCH == aarch64 ]]; then
     sed -i "\\|^${escaped_package}$|d" "$build_cache_dir/packages.aarch64"
   done
   rm -f "$build_cache_dir/packages.x86_64"
-  rm -f "$build_cache_dir/airootfs/etc/mkinitcpio.d/linux.preset" "$build_cache_dir/airootfs/etc/mkinitcpio.d/linux-t2.preset"
+  rm -f "$build_cache_dir/airootfs/etc/mkinitcpio.d/linux.preset" "$build_cache_dir/airootfs/etc/mkinitcpio.d/linux-t2.preset" "$build_cache_dir/airootfs/etc/mkinitcpio.d/linux-surface.preset"
   # Drops the x86-only microcode/memdisk hooks and adds the Tegra/MediaTek
   # I2C-HID keyboard modules.
   configure_archiso_aarch64_mkinitcpio "$build_cache_dir/airootfs/etc/mkinitcpio.conf.d/archiso.conf"
@@ -330,7 +337,7 @@ if [[ $OMARCHY_ARCH == aarch64 ]]; then
   # saves a laptop's signed firmware from Windows with qcom-firmware-extract.
   arch_packages=("$OMARCHY_KERNEL" archlinuxarm-keyring git gum jq openssl openssh pciutils plymouth ttfx tzupdate omarchy-keyring "$OMARCHY_SETTINGS_PACKAGE" lvm2 cryptsetup parted systemd-ukify linux-firmware-qcom qcom-firmware-extract python)
 else
-  arch_packages=(linux-t2 git gum jq openssl plymouth ttfx tzupdate omarchy-keyring "$OMARCHY_SETTINGS_PACKAGE" lvm2 cryptsetup parted)
+  arch_packages=(linux-surface linux-surface-headers git gum jq openssl plymouth ttfx tzupdate omarchy-keyring "$OMARCHY_SETTINGS_PACKAGE" lvm2 cryptsetup parted)
 fi
 live_packages_file="$build_cache_dir/packages.$OMARCHY_ARCH"
 printf '%s\n' "${arch_packages[@]}" >> "$live_packages_file"
@@ -594,6 +601,8 @@ if [[ -n ${LOCAL_OMARCHY_BUILD:-} ]]; then
   )
 fi
 
+# Surface target kernel (installer picks linux-surface on Microsoft Surface hardware).
+all_packages+=(linux-surface linux-surface-headers iptsd)
 mkdir -p /tmp/offlinedb
 download_offline_packages() {
   pacman --config "$online_pacman_conf" --noconfirm -Syw \

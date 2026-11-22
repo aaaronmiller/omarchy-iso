@@ -1,0 +1,15 @@
+# Not listed because Omarchy 4.0.4 already bundles them (checked against the ISO offline mirror 2026-10-18): zsh nss unzip wl-clipboard lazydocker herdr mise.
+# bottom moved to extras: btop (bundled by Omarchy) covers the same job.
+stow
+git-delta
+podman
+crun
+direnv
+zsh-autosuggestions
+ghostty
+worktrunk
+# Decided 2026-10-18 (user delegated): daily-driver tools from the omp research, low risk, no hooks into agent configs.
+yazi
+atuin
+gitui
+helix

@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart iptsd (touchscreen) after resume (linux-surface #1131: SL4 touchscreen dead after sleep)
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'sleep 1; systemctl restart "iptsd@*.service"'
+
+[Install]
+WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target

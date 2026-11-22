@@ -1,0 +1,7 @@
+agent-browser
+antigravity
+cline
+@kilocode
+@openai
+openclaw
+pnpm

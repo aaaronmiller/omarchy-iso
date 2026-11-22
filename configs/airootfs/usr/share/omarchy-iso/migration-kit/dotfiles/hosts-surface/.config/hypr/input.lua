@@ -1,0 +1,1 @@
+../../../../configs/hypr/input.lua
