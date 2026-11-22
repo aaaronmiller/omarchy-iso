@@ -10,7 +10,9 @@
 #   - COLUMNS/LINES so gum picks up real terminal size
 set -euo pipefail
 
-[[ $(tty) == /dev/tty1 ]] || exit 0
+# Inside kmscon this runs again on kmscon's pty: the wizard and the install
+# are shown there, in real fonts, and tty1 waits.
+[[ $(tty) == /dev/tty1 || ${OMARCHY_KMSCON:-} == 1 ]] || exit 0
 
 # The N1x recovery boot entry is a diagnostic shell, never the installer: record
 # the hardware probe, show how to reach the machine, and leave tty1 at a prompt.
@@ -35,6 +37,10 @@ if [[ -f /usr/share/omarchy-iso/install-debug ]]; then
   export OMARCHY_INSTALL_DEBUG=1
 fi
 
+# gum's key hints ("enter submit") are hardcoded English and add nothing to
+# prompts that already say what to do, so every widget leaves them off.
+export GUM_CHOOSE_SHOW_HELP=false GUM_CONFIRM_SHOW_HELP=false GUM_FILTER_SHOW_HELP=false GUM_INPUT_SHOW_HELP=false
+
 # Tokyo Night palette so the live VT matches the installed look.
 set_tokyo_night_colors() {
   echo -en "\e]P01a1b26"; echo -en "\e]P1f7768e"; echo -en "\e]P29ece6a"
@@ -46,7 +52,7 @@ set_tokyo_night_colors() {
   echo -en "\033[0m"
   clear
 }
-set_tokyo_night_colors
+[[ ${OMARCHY_KMSCON:-} == 1 ]] || set_tokyo_night_colors
 
 mkdir -p /var/log
 touch "$OMARCHY_INSTALL_LOG_FILE"
@@ -64,12 +70,13 @@ if [[ ${OMARCHY_INSTALL_DEBUG:-} == "1" ]]; then
   echo "================================"
 fi
 
-# Warm the page cache for the bundled packages while the user works through the
-# wizard. The install reads ~3GB out of the offline mirror, and pacman consumes
-# it at only ~33MB/s, so on media slower than that the install is read-bound and
-# every byte cached here is a byte it never waits for. On faster media this costs
-# nothing but otherwise-idle bandwidth: the medium is untouched while the user
-# types, and the target disk it writes to later is a different device.
+# Warm the page cache for the root image and bundled packages while the user
+# works through the wizard. The install writes a multi-GB root image to the
+# target and then pacstraps a few packages out of the offline mirror; on media
+# slower than the target the install is read-bound and every byte cached here
+# is a byte it never waits for. On faster media this costs nothing but
+# otherwise-idle bandwidth: the medium is untouched while the user types, and
+# the target disk it writes to later is a different device.
 #
 # Clean page cache only, so the kernel reclaims it under pressure instead of
 # OOMing, and a budget so small machines never evict what was just warmed.
@@ -77,15 +84,43 @@ fi
 warm_offline_mirror() {
   local mirror=/var/cache/omarchy/mirror/offline
   local budget_kb spent_kb=0 size_kb path
+  # The orchestrator's ROOT_IMAGE.
+  local image=/run/archiso/bootmnt/arch/$(uname -m)/omarchy-root.img.zst
 
   [[ ${OMARCHY_NO_PREFETCH:-} == 1 ]] && return 0
-  [[ -d $mirror ]] || return 0
 
   budget_kb=$(($(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo) / 2))
   ((budget_kb > 262144)) || return 0
 
-  # Largest first: the install reads most of the mirror, so when the budget
-  # cannot cover all of it this still front-loads the bytes that dominate.
+  # omarchy-mirror-verify.service and then omarchy-root-image-verify.service
+  # (started at boot) read the shipped mirror and the whole image as they hash
+  # them, and two readers on one USB stick seek against each other: let both
+  # finish first, whatever their verdict. Wait on their start jobs, not on
+  # is-active: while the mirror is hashed the image's job is queued behind it
+  # (Before=) and that unit still reads inactive. The image's pass is the
+  # warm-up for the image too; the read below then keeps it cached.
+  while [[ -n $(systemctl list-jobs --no-legend omarchy-mirror-verify.service \
+    omarchy-root-image-verify.service 2>/dev/null) ]]; do
+    sleep 1
+  done
+
+  # The image first, and only when all of it fits: a second read of pages
+  # the verify just cached keeps them cached through the install. When it does
+  # not fit, leave the cache alone. omarchy-image-write writes whatever part
+  # of the image is still cached first and reads the rest once; re-reading
+  # the head here, or the mirror after it, would only evict the part the
+  # verify left behind (on a 4 GB machine, most of what was cached).
+  if [[ -f $image ]]; then
+    size_kb=$(du -k -- "$image" | cut -f1)
+    ((size_kb > budget_kb)) && return 0
+    cat -- "$image" >/dev/null 2>&1 || true
+    spent_kb=$size_kb
+  fi
+
+  [[ -d $mirror ]] || return 0
+
+  # Then the mirror, largest first: when the budget cannot cover all of it
+  # this still front-loads the bytes that dominate.
   while read -r size_kb path; do
     ((spent_kb + size_kb > budget_kb)) && continue
     cat -- "$path" >/dev/null 2>&1 || true
@@ -93,19 +128,61 @@ warm_offline_mirror() {
   done < <(du -k "$mirror"/*.pkg.tar.zst 2>/dev/null | sort -rn)
 }
 
-warm_offline_mirror &
-warm_pid=$!
-trap 'kill "$warm_pid" 2>/dev/null' EXIT
+# Inside kmscon the tty1 run is still warming the cache.
+if [[ ${OMARCHY_KMSCON:-} != 1 ]]; then
+  warm_offline_mirror &
+  warm_pid=$!
+  trap 'kill "$warm_pid" 2>/dev/null' EXIT
+fi
 
 cd /root
 # Autoinstall: a cidata drive carrying the configurator's own output files
 # stands in for the wizard. omarchy-cidata-load copies them into /root and
 # everything downstream runs the ordinary path against ordinary inputs.
-if /usr/local/bin/omarchy-cidata-load; then
+if [[ -f /usr/share/omarchy-iso/oem-install ]]; then
+  export OMARCHY_UI_INTERACTIVE=no
+  ./configurator --oem
+elif [[ ${OMARCHY_KMSCON:-} == 1 ]]; then
+  # The tty1 run already looked for cidata.
+  ./configurator && status=0 || status=$?
+  # A retry from the shell left after an abort: that shell, not kmscon's
+  # command, gets the relaunch request, so end it to end kmscon.
+  if ((status == 75)) && [[ -n ${OMARCHY_KMSCON_SHELL:-} ]]; then
+    kill -HUP "$OMARCHY_KMSCON_SHELL" 2>/dev/null || true
+  fi
+  ((status == 0)) || exit "$status"
+elif /usr/local/bin/omarchy-cidata-load; then
   echo "Autoinstall configuration found on cidata drive; skipping the configurator."
   export OMARCHY_UI_INTERACTIVE=no
 else
-  ./configurator
+  # The wizard and the whole install run in kmscon, which runs this script
+  # again: fonts with every script the installer speaks, the same on every
+  # machine, where the console has one bitmap font and cannot draw Chinese,
+  # Japanese or Korean at all. The launcher is the runtime's own, the one
+  # first-boot owner setup is drawn with.
+  # shellcheck disable=SC1091
+  source /usr/share/omarchy-iso/kmscon.sh
+
+  # The script exits 75 to ask for a relaunch; anything else that is not
+  # success leaves a shell in kmscon, so an abort's message stays readable and
+  # the installer can be rerun in its language. The shell keeps this PID, so a
+  # retry from it that asks for a relaunch can hang it up, which ends kmscon.
+  inner='"$@"; status=$?; ((status == 0 || status == 75)) && exit $status; export OMARCHY_KMSCON_SHELL=$$; exec bash -l'
+
+  # kmscon takes its layout and font once, at its start: the configurator
+  # exits 75 with its answers saved to have it started again with the layout
+  # and language just picked. Before any are, US and the language an ISO
+  # presets (presets/<code>.json).
+  mkdir -p /run/omarchy-iso
+  while true; do
+    keymap=us language=$(jq -r '.language // empty' /usr/share/omarchy-iso/preset.json 2>/dev/null || true)
+    if [[ -r /run/omarchy-iso/kmscon-resume ]]; then
+      { read -r keymap; read -r language; } < <(bash -c 'source "$1"; printf "%s\n%s\n" "${keyboard:-us}" "${language:-}"' _ /run/omarchy-iso/kmscon-resume)
+    fi
+    omarchy_kmscon /run/omarchy-iso/kmscon.log "$keymap" "$language" "" /bin/bash -c "$inner" _ /root/.automated_script.sh
+    # Without a relaunch asked for, the installer ran to its end in kmscon.
+    [[ -e /run/omarchy-iso/kmscon-resume ]] || exit 0
+  done
 fi
 
 # Deferred-provisioning installs skip the celebration/reboot prompt and reboot on
@@ -117,6 +194,11 @@ if [[ -f /root/defer-provisioning ]] ||
   [[ "$(jq -r '.omarchy_install.defer_provisioning // false' /root/user_configuration.json 2>/dev/null)" == "true" ]]; then
   export OMARCHY_UI_DEFER_PROVISIONING=yes
 fi
+
+# The dashboard speaks the language picked in the configurator, or named by an
+# autoinstall configuration.
+OMARCHY_ISO_LANGUAGE="$(jq -r '.omarchy_install.language // "en"' /root/user_configuration.json 2>/dev/null || echo en)"
+export OMARCHY_ISO_LANGUAGE
 
 # The foreground dashboard is now the sole visible install UI owner. It starts
 # the actual installer as a non-interactive child, logs child output, waits for
@@ -130,9 +212,8 @@ rm -f /run/omarchy-install/state.json
   /usr/local/bin/omarchy-iso-install \
     --config /root/user_configuration.json \
     --creds /root/user_credentials.json \
-    --full-name-file /root/user_full_name.txt \
-    --email-file /root/user_email_address.txt \
     --encrypt-file /root/user_encrypt_installation.txt \
     --authorized-keys-file /root/authorized_keys \
     --tailscale-authkey-file /root/tailscale_authkey \
-    --defer-provisioning-file /root/defer-provisioning
+    --defer-provisioning-file /root/defer-provisioning \
+    --oem-dir /usr/share/omarchy-iso/oem
