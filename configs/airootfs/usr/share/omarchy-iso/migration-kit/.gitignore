@@ -1,0 +1,3 @@
+# Machine inventory written by scripts/01-export-inventory.sh; it describes one
+# machine, so it stays local (snapshot kept in the private project record, MT-186)
+inventory/

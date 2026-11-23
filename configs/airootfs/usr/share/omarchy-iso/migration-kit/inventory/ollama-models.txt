@@ -1,2 +1,0 @@
-NAME             ID              SIZE      MODIFIED     
-llama3:latest    365c0bd3c000    4.7 GB    7 months ago    
